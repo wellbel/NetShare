@@ -1,7 +1,23 @@
+# MacOS App
 FileStreamingDemo/build/CMakeFiles
 FileStreamingDemo/build/cmake_install.cmake
 FileStreamingDemo/build/CMakeCache.txt
 FileStreamingDemo/build/Makefile
 FileStreamingDemo/build/output
 .DS_Store
-.vscode/
+.vscode
+# Win32 App
+.vscode
+NetShareWin32/build/CMakeFiles
+NetShareWin32/build/output.dir
+NetShareWin32/build/x64
+NetShareWin32/build/Debug
+NetShareWin32/build/ALL_BUILD.vcxproj
+NetShareWin32/build/ALL_BUILD.vcxproj.filters
+NetShareWin32/build/cmake_install.cmake
+NetShareWin32/build/CMakeCache.txt
+NetShareWin32/build/NetShareApp.sln
+NetShareWin32/build/output.vcxproj
+NetShareWin32/build/output.vcxproj.filters
+NetShareWin32/build/ZERO_CHECK.vcxproj
+NetShareWin32/build/ZERO_CHECK.vcxproj.filters
