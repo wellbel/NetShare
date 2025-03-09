@@ -1,11 +1,16 @@
 # Shared
 .vscode
-# MacOS App
+# MacOS Demo App
 Demos/FileStreamingDemo/build/CMakeFiles
 Demos/FileStreamingDemo/build/cmake_install.cmake
 Demos/FileStreamingDemo/build/CMakeCache.txt
 Demos/FileStreamingDemo/build/Makefile
 Demos/FileStreamingDemo/build/output
+Demos/FileStreamingDemo/build/images/file.txt
+Demos/FileStreamingDemo/build/images/out.txt
 .DS_Store
-# Win32 App
+# Win32 Demo App
 Demos/NetShareWin32/build/
+
+# NetShare App
+Application/build

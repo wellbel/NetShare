@@ -5,12 +5,12 @@
 
 #define BUFFERSIZE 1024
 
-#define INPUTFILE "ICIMG - 793.gif"
-#define OUTPUTFILE "newImage.gif"
+#define INPUTFILE "file.txt"
+#define OUTPUTFILE "out.txt"
 
-const std::string Path{"./Images/"};
+const std::string Path{"/Users/maxim/CProjects/NetShareClient/Demos/FileStreamingDemo/build/Images/"};
 
-void printProgress(const std::string& fileName, size_t curr, size_t max){
+void printProgress(const std::string& fileName, size_t curr, size_t max){ // Implementation and definition look very unoptimized
     std::cout << '\r';
     size_t progress{static_cast<size_t>((curr/(double)max)*10)};
     std::string bar{std::string(progress,'#')+std::string(10-progress,'-')};
@@ -29,7 +29,7 @@ int main() {
     char buffer[BUFFERSIZE];
     if(image.is_open() && outputImage.is_open()) {
         image.seekg(0, std::ios_base::end);
-        size_t fileSize{static_cast<size_t>(image.tellg())};
+        size_t fileSize{};
         std::cout << "File Size: "<< fileSize << " bytes" << std::endl;
 
         image.seekg(0);
