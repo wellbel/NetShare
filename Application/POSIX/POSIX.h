@@ -25,7 +25,8 @@ struct fileInfo {
     size_t fileSize;
 };
 
-fileInfo nextFile(std::fstream&, const string&, std::ifstream&)
+fileInfo nextFile(std::fstream&, const string&, std::ifstream&);
+int main(int, char**);
 
 #endif
 #endif
