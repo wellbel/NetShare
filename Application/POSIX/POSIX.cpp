@@ -8,7 +8,7 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
     if (file.is_open()) file.close();
     if (!std::getline(stream, fileName)) return returnInfo; // Defined for error to be true
 
-    file.open(path + '/' + fileName); // Just in case path does not end with a slash
+    file.open(path + '/' + fileName, std::ios_base::binary); // Just in case path does not end with a slash
     if (file.is_open()) {
         returnInfo.error = false;
         returnInfo.fileName = fileName;
@@ -18,9 +18,15 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
         file.seekg(0);
     } else {
         returnInfo.fileName = fileName;
-        returnInfo.path = path + fileName;
+        returnInfo.path = path + '/' + fileName;
+
+        std::cout << "Failed.\t" << returnInfo.path << std::endl;
     }
     return returnInfo;
+}
+
+bool recieve(int sockfd, char* pb) {
+    return recv(sockfd, pb, 1, 0) < 1;
 }
 
 int main(int argc, char** argv) {
@@ -55,40 +61,59 @@ int main(int argc, char** argv) {
         std::cerr << "Connection failed; errno: " << errno << std::endl;
         return EXIT_FAILURE;
     } else {
-        cout << "Connection successful to: " << inet_ntoa(server.sin_addr) << ':' << ntohs(server.sin_port) << '\n';
+        cout << "Connection successful to: " << inet_ntoa(server.sin_addr) << ':' << ntohs(server.sin_port) << std::endl;
     }
 
     char buffer[BUFFERSIZE];
     bool fileExists = true;
     int fileFails{0};
 
-    std::cout << "Files Ready to tranfer" << std::endl;
+    char placeboffer[1];
 
-    while(fileExists && fileFails < FILEFAILLIMIT) {
+    std::cout << "Files Ready to transfer" << fileFails << std::endl;
+
+    while(fileExists && fileFails <= FILEFAILLIMIT) {
         fileInfo fInfo = nextFile(FileList, Path, ActiveFile);
         if (fInfo.error) {
-            std::cerr << "File failed to open.\t" << fInfo.path;
+            std::cout << "File failed to open.\t" << fInfo.fileName << std::endl;
             fileFails++;
             continue;
         }
         send(sockfd, fInfo.fileName.c_str(), fInfo.fileName.length(), 0);
         std::cout << fInfo.fileName << std::endl;
 
+        if (recieve(sockfd, placeboffer)) {
+            std::cout << "Server closed connection" << std::endl;
+            break;
+        }
         // Transfer file data
         while(ActiveFile.read(buffer, BUFFERSIZE) && !ActiveFile.fail() && !ActiveFile.eof())
-            send(sockfd, buffer, BUFFERSIZE, 0);
+            send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0);
+            if (recieve(sockfd, placeboffer)) {
+                std::cout << "Server closed connection" << std::endl;
+                break;
+            }
         if (ActiveFile.gcount() > 0) send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0); 
 
         // End file data transmission
-        buffer[0] = '\r'; // CR char - int 10
+        buffer[0] = 0xFF;
+        buffer[1] = 0xFF;
+        buffer[2] = 0xFF;
+        buffer[3] = 0xFF;
+         
+
         send(sockfd, buffer, 1, 0);
+        if (recieve(sockfd, placeboffer)) {
+            std::cout << "Server closed connection" << std::endl;
+            break;
+        }
     }
 
     FileList.close();
     close(sockfd);
 
     if (fileFails >= FILEFAILLIMIT) {
-        std::cerr << "Maximum file failures reached.";
+        std::cerr << "Maximum file failures reached. " << fileFails << std::endl;
         return EXIT_FAILURE;
     }
 
