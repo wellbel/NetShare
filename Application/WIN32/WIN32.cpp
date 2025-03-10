@@ -102,7 +102,9 @@ int main(int argc, char **argv)
     closesocket(ListenSocket);
 
     char recvbuf[DEFAULT_BUFLEN];
-    int recvbuflen = DEFAULT_BUFLEN;
+    // For Recieving packets in orderly fashion where transfer is recv -> send loop instead of recv -> recv loop
+    int iSendResult;
+    char sendbuf[1] = {'g'};
 
     bool DataMode = false; // This is true after we have opened the output file
 
@@ -110,12 +112,13 @@ int main(int argc, char **argv)
     do
     {
 
-        iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
+        iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
         if (iResult > 0)
-        {
+        {   
             if (!DataMode)
             { // File name is passed
-                string fileName{recvbuf, static_cast<size_t>(iResult)};
+                string fileName {recvbuf, static_cast<size_t>(iResult)};
+
                 if (!setOutputFile(Path, fileName, OutputFile))
                 {
                     std::cerr << "Output file failed.\n\t" << Path << '\\' << fileName << std::endl;
@@ -130,14 +133,24 @@ int main(int argc, char **argv)
                     return 1;
                 }
                 DataMode = true;
+                std::cout << fileName << std::endl;
             }
-            else if (iResult == 1 && (int)recvbuf[0] == 10)
+            else if (iResult == 2) // Does not work
             { // CR indicates end of file transmission
-                DataMode = false;
+                std::cout << "1 len" << std::endl;
+                if(recvbuf[0] == '\r') DataMode = false;
             }
             else
             { // Raw data is passed
                 OutputFile.write(recvbuf, iResult);
+            }
+            
+            iSendResult = send(ClientSocket, sendbuf, 1, 0); 
+            if (iSendResult == SOCKET_ERROR) {
+                printf("send failed: %d\n", WSAGetLastError());
+                closesocket(ClientSocket);
+                WSACleanup();
+                return 1;
             }
         }
         else if (iResult == 0)
