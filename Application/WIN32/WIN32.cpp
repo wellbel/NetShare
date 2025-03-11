@@ -5,7 +5,7 @@ bool setOutputFile(const string &path, const string &fileName, std::ofstream &fi
 {
     if (fileStream.is_open())
         fileStream.close();
-    fileStream.open(path + '\\' + fileName);
+    fileStream.open(path + '\\' + fileName, std::ios_base::binary);
 
     return fileStream.is_open();
 }
@@ -106,47 +106,64 @@ int main(int argc, char **argv)
     int iSendResult;
     char sendbuf[1] = {'g'};
 
-    bool DataMode = false; // This is true after we have opened the output file
-
+    const string endFileString {"NetShareEnd"};
     // Receive until the peer shuts down the connection
-    do
-    {
+    do {
 
         iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
         if (iResult > 0)
-        {   
-            if (!DataMode)
-            { // File name is passed
-                string fileName {recvbuf, static_cast<size_t>(iResult)};
+        {
+            string fileName{recvbuf, static_cast<size_t>(iResult)};
 
-                if (!setOutputFile(Path, fileName, OutputFile))
+            if (!setOutputFile(Path, fileName, OutputFile))
+            {
+                std::cerr << "Output file failed.\n\t" << Path << '\\' << fileName << std::endl;
+
+                iResult = shutdown(ClientSocket, SD_BOTH);
+                if (iResult == SOCKET_ERROR)
                 {
-                    std::cerr << "Output file failed.\n\t" << Path << '\\' << fileName << std::endl;
-
-                    iResult = shutdown(ClientSocket, SD_BOTH);
-                    if (iResult == SOCKET_ERROR)
-                    {
-                        printf("shutdown failed: %d\n", WSAGetLastError());
-                        closesocket(ClientSocket);
-                        WSACleanup();
-                    }
-                    return 1;
+                    printf("shutdown failed: %d\n", WSAGetLastError());
+                    closesocket(ClientSocket);
+                    WSACleanup();
                 }
-                DataMode = true;
-                std::cout << fileName << std::endl;
+                return 1;
             }
-            else if (iResult == 2) // Does not work
-            { // CR indicates end of file transmission
-                std::cout << "1 len" << std::endl;
-                if(recvbuf[0] == '\r') DataMode = false;
+            std::cout << fileName << std::endl;
+
+            iSendResult = send(ClientSocket, sendbuf, 1, 0);
+            if (iSendResult == SOCKET_ERROR)
+            {
+                printf("send failed: %d\n", WSAGetLastError());
+                closesocket(ClientSocket);
+                WSACleanup();
+                return 1;
             }
-            else
-            { // Raw data is passed
-                OutputFile.write(recvbuf, iResult);
-            }
-            
-            iSendResult = send(ClientSocket, sendbuf, 1, 0); 
-            if (iSendResult == SOCKET_ERROR) {
+
+            do {
+                iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
+                if (iResult != DEFAULT_BUFLEN) {
+                    string endInSight {recvbuf, static_cast<size_t>(iResult)};
+                    size_t pos = endInSight.find(endFileString);
+                    if(pos != std::string::npos) {
+                        //cout << "End found: " << (static_cast<size_t>(iResult-11) == pos) << '\t' << (iResult < 11) << std::endl;
+                        OutputFile.write(recvbuf, static_cast<size_t>(iResult-11));
+                        break;
+                    } else if(iResult < 11) {
+                        cout << "Less than 11 bytes " << endInSight.substr(0, iResult) << '\t' << iResult << std::endl;
+                        try { 
+                            if (endInSight.substr(0, iResult) == endFileString.substr(11-iResult)) break; // End found
+                        } catch (...) {
+                            cout << "Comparison Failed." << std::endl;
+                        }
+                        OutputFile.write(recvbuf, static_cast<size_t>(iResult));
+                    }
+                }
+                OutputFile.write(recvbuf, static_cast<size_t>(iResult));
+            } while (iResult > 0); // Whole file
+
+            iSendResult = send(ClientSocket, sendbuf, 1, 0);
+            if (iSendResult == SOCKET_ERROR)
+            {
                 printf("send failed: %d\n", WSAGetLastError());
                 closesocket(ClientSocket);
                 WSACleanup();
