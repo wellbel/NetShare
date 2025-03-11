@@ -19,6 +19,7 @@ using std::string;
 using std::cout;
 
 struct fileInfo {
+    bool eof = true;
     bool error = true;
     string fileName;
     string path;
@@ -26,6 +27,8 @@ struct fileInfo {
 };
 
 fileInfo nextFile(std::fstream&, const string&, std::ifstream&);
+bool gotoLine(std::fstream&, size_t);
+bool recieve(int, char*);
 int main(int, char**);
 
 #endif
