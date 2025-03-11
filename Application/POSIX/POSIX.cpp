@@ -6,7 +6,8 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
     string fileName;
 
     if (file.is_open()) file.close();
-    if (!std::getline(stream, fileName)) return returnInfo; // Defined for error to be true
+    if (!std::getline(stream, fileName)) return returnInfo; // Defined for error to be true // eof 
+    returnInfo.eof = false;
 
     file.open(path + '/' + fileName, std::ios_base::binary); // Just in case path does not end with a slash
     if (file.is_open()) {
@@ -26,6 +27,7 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
 }
 
 bool gotoLine(std::fstream& stream, size_t lineNumber) {
+    --lineNumber;
     std::string nothing;
     for(;lineNumber > 0; lineNumber--) {
         if(!std::getline(stream, nothing)) return false;
@@ -90,10 +92,15 @@ int main(int argc, char** argv) {
     while(fileExists && fileFails <= FILEFAILLIMIT) {
         fileInfo fInfo = nextFile(FileList, Path, ActiveFile);
         if (fInfo.error) {
-            std::cout << "File failed to open.\t" << fInfo.fileName << std::endl;
-            fileFails++;
-            continue;
-        }
+            if (!fInfo.eof) {
+                std::cout << "File failed to open.\t" << fInfo.fileName << std::endl;
+                fileFails++;
+                continue;
+            } else {
+                std::cout << "Reached eof on FileList." << std::endl;
+                break;
+            }
+        } 
         send(sockfd, fInfo.fileName.c_str(), fInfo.fileName.length(), 0);
         std::cout << fInfo.fileName << '\t' << fInfo.fileSize << std::endl;
 
@@ -113,7 +120,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    recieve(sockfd, placeboffer);
     FileList.close();
     close(sockfd);
 

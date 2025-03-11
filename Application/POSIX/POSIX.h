@@ -19,6 +19,7 @@ using std::string;
 using std::cout;
 
 struct fileInfo {
+    bool eof = true;
     bool error = true;
     string fileName;
     string path;
