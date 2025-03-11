@@ -19,6 +19,11 @@ int main(int argc, char **argv)
         std::cerr << "Please provide an absolute* path to folder.\n*Not Required." << std::endl;
         return 1;
     }
+    if (argc > 2) {
+        std::cout << "Cleaning WSA..." << std::endl;
+        WSACleanup();
+        return 0;
+    }
 
     const string Path{argv[1]};
     std::ofstream OutputFile;
@@ -87,17 +92,18 @@ int main(int argc, char **argv)
     }
 
     SOCKET ClientSocket = INVALID_SOCKET;
-
+    cout << "Waiting for client...";
     // Accept a client socket
     ClientSocket = accept(ListenSocket, NULL, NULL);
     if (ClientSocket == INVALID_SOCKET)
     {
+        cout << std::endl;
         printf("accept failed: %d\n", WSAGetLastError());
         closesocket(ListenSocket);
         WSACleanup();
         return 1;
     }
-
+    std::cout << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
     // No longer need server socket after client is accepted
     closesocket(ListenSocket);
 
@@ -144,21 +150,28 @@ int main(int argc, char **argv)
                 if (iResult != DEFAULT_BUFLEN) {
                     string endInSight {recvbuf, static_cast<size_t>(iResult)};
                     size_t pos = endInSight.find(endFileString);
-                    if(pos != std::string::npos) {
+                    if (pos != std::string::npos) {
                         //cout << "End found: " << (static_cast<size_t>(iResult-11) == pos) << '\t' << (iResult < 11) << std::endl;
                         OutputFile.write(recvbuf, static_cast<size_t>(iResult-11));
                         break;
-                    } else if(iResult < 11) {
-                        cout << "Less than 11 bytes " << endInSight.substr(0, iResult) << '\t' << iResult << std::endl;
+                    } else if (iResult < 11) {
                         try { 
                             if (endInSight.substr(0, iResult) == endFileString.substr(11-iResult)) break; // End found
-                        } catch (...) {
-                            cout << "Comparison Failed." << std::endl;
+                        } catch (...) {}
+                        OutputFile.write(recvbuf, static_cast<size_t>(iResult));
+                    }
+                } else {
+                    if (recvbuf[DEFAULT_BUFLEN-1] == 'd') { // Could possibly be a perfect transfer of 2048 bytes with full end
+                        string endInSight {recvbuf+(DEFAULT_BUFLEN-11), 11};
+                        size_t pos = endInSight.find(endFileString);
+                        if (pos != std::string::npos) {
+                            OutputFile.write(recvbuf, static_cast<size_t>(iResult-11));
+                            break;
                         }
+                    } else {
                         OutputFile.write(recvbuf, static_cast<size_t>(iResult));
                     }
                 }
-                OutputFile.write(recvbuf, static_cast<size_t>(iResult));
             } while (iResult > 0); // Whole file
 
             iSendResult = send(ClientSocket, sendbuf, 1, 0);
