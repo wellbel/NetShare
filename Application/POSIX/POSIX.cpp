@@ -25,6 +25,14 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
     return returnInfo;
 }
 
+bool gotoLine(std::fstream& stream, size_t lineNumber) {
+    std::string nothing;
+    for(;lineNumber > 0; lineNumber--) {
+        if(!std::getline(stream, nothing)) return false;
+    }
+    return true;
+}
+
 bool recieve(int sockfd, char* pb) {
     return recv(sockfd, pb, 1, 0) < 1;
 }
@@ -42,6 +50,11 @@ int main(int argc, char** argv) {
     const string Path = argv[3];
     std::fstream FileList {argv[4]};
     std::ifstream ActiveFile{};
+
+    size_t startLine = argc > 5 ? atoi(argv[5]) : 0;
+    if (startLine != 0 && gotoLine(FileList, static_cast<size_t>(startLine))) {
+        cout << "Starting at line: " << startLine << std::endl;
+    }
 
     if (!FileList.is_open()) {
         std::cerr << "Could not open File list" << std:: endl;
@@ -68,6 +81,8 @@ int main(int argc, char** argv) {
     bool fileExists = true;
     int fileFails{0};
 
+    char endFileSeq[11] {'N','e','t','S','h','a','r','e','E','n','d'};
+
     char placeboffer[1];
 
     std::cout << "Files Ready to transfer" << fileFails << std::endl;
@@ -80,7 +95,7 @@ int main(int argc, char** argv) {
             continue;
         }
         send(sockfd, fInfo.fileName.c_str(), fInfo.fileName.length(), 0);
-        std::cout << fInfo.fileName << std::endl;
+        std::cout << fInfo.fileName << '\t' << fInfo.fileSize << std::endl;
 
         if (recieve(sockfd, placeboffer)) {
             std::cout << "Server closed connection" << std::endl;
@@ -89,26 +104,16 @@ int main(int argc, char** argv) {
         // Transfer file data
         while(ActiveFile.read(buffer, BUFFERSIZE) && !ActiveFile.fail() && !ActiveFile.eof())
             send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0);
-            if (recieve(sockfd, placeboffer)) {
-                std::cout << "Server closed connection" << std::endl;
-                break;
-            }
-        if (ActiveFile.gcount() > 0) send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0); 
-
-        // End file data transmission
-        buffer[0] = 0xFF;
-        buffer[1] = 0xFF;
-        buffer[2] = 0xFF;
-        buffer[3] = 0xFF;
-         
-
-        send(sockfd, buffer, 1, 0);
+        if (ActiveFile.gcount() > 0) send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0);
+        send(sockfd, endFileSeq, 11, 0);
+        
         if (recieve(sockfd, placeboffer)) {
             std::cout << "Server closed connection" << std::endl;
             break;
         }
     }
 
+    recieve(sockfd, placeboffer);
     FileList.close();
     close(sockfd);
 
