@@ -17,6 +17,7 @@ fileInfo nextFile(std::fstream& stream, const string& path, std::ifstream& file)
         file.seekg(0, std::ios_base::end);
         returnInfo.fileSize = static_cast<size_t>(file.tellg());
         file.seekg(0);
+        returnInfo.sendData = fileName + '\r' + std::to_string(returnInfo.fileSize) + '\r'; 
     } else {
         returnInfo.fileName = fileName;
         returnInfo.path = path + '/' + fileName;
@@ -83,8 +84,6 @@ int main(int argc, char** argv) {
     bool fileExists = true;
     int fileFails{0};
 
-    char endFileSeq[11] {'N','e','t','S','h','a','r','e','E','n','d'};
-
     char placeboffer[1];
 
     std::cout << "Files Ready to transfer" << fileFails << std::endl;
@@ -101,7 +100,7 @@ int main(int argc, char** argv) {
                 break;
             }
         } 
-        send(sockfd, fInfo.fileName.c_str(), fInfo.fileName.length(), 0);
+        send(sockfd, fInfo.sendData.c_str(), fInfo.sendData.length(), 0);
         std::cout << fInfo.fileName << '\t' << fInfo.fileSize << std::endl;
 
         if (recieve(sockfd, placeboffer)) {
@@ -112,8 +111,7 @@ int main(int argc, char** argv) {
         while(ActiveFile.read(buffer, BUFFERSIZE) && !ActiveFile.fail() && !ActiveFile.eof())
             send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0);
         if (ActiveFile.gcount() > 0) send(sockfd, buffer, static_cast<size_t>(ActiveFile.gcount()), 0);
-        send(sockfd, endFileSeq, 11, 0);
-        
+
         if (recieve(sockfd, placeboffer)) {
             std::cout << "Server closed connection" << std::endl;
             break;

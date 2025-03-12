@@ -7,7 +7,7 @@
 #include <string>
 
 #define BUFFERSIZE 2048
-#define FILEFAILLIMIT 10
+#define FILEFAILLIMIT 5
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -22,6 +22,7 @@ struct fileInfo {
     bool eof = true;
     bool error = true;
     string fileName;
+    string sendData;
     string path;
     size_t fileSize;
 };
