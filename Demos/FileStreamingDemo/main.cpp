@@ -29,7 +29,7 @@ int main() {
     char buffer[BUFFERSIZE];
     if(image.is_open() && outputImage.is_open()) {
         image.seekg(0, std::ios_base::end);
-        size_t fileSize{};
+        size_t fileSize{static_cast<size_t>(image.tellg())};
         std::cout << "File Size: "<< fileSize << " bytes" << std::endl;
 
         image.seekg(0);
