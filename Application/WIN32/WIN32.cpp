@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     }
 
     SOCKET ClientSocket = INVALID_SOCKET;
-    cout << "Waiting for client...";
+    cout << "Waiting for client..." << std::endl;
     // Accept a client socket
     ClientSocket = accept(ListenSocket, NULL, NULL);
     if (ClientSocket == INVALID_SOCKET)
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
         WSACleanup();
         return 1;
     }
-    std::cout << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
+    std::cout << "Client accepted" << std::endl;
     // No longer need server socket after client is accepted
     closesocket(ListenSocket);
 
@@ -120,7 +120,24 @@ int main(int argc, char **argv)
         
         if (iResult > 0)
         {
-            string fileName{recvbuf, static_cast<size_t>(iResult)};
+            string fileData {recvbuf, static_cast<size_t>(iResult)};
+
+            size_t fileNameEnd {fileData.find("\r")};
+            size_t fileSizeEnd {fileData.find("\r", fileNameEnd+1)};
+
+            string fileName {fileData.substr(0, fileNameEnd)};
+
+            string fileSizeStr {fileData.substr(fileNameEnd + 1, fileSizeEnd - fileNameEnd)};
+            size_t remainingBytes{0};
+            size_t recvBytes;
+            try {
+                remainingBytes = std::stoull(fileSizeStr);
+            } catch (...) {
+                std::cerr << "Failed to parse file size." << std::endl;
+                closesocket(ClientSocket);
+                WSACleanup();
+                return 1;
+            }
 
             if (!setOutputFile(Path, fileName, OutputFile))
             {
@@ -135,7 +152,7 @@ int main(int argc, char **argv)
                 }
                 return 1;
             }
-            std::cout << fileName << std::endl;
+            std::cout << fileName << ":" << remainingBytes << std::endl;
 
             iSendResult = send(ClientSocket, sendbuf, 1, 0);
             if (iSendResult == SOCKET_ERROR)
@@ -148,34 +165,16 @@ int main(int argc, char **argv)
 
             do {
                 iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
-                if (iResult != DEFAULT_BUFLEN) {
-                    string endInSight{recvbuf, static_cast<size_t>(iResult)};
-                    size_t pos = endInSight.find(endFileString);
-                    if (pos != std::string::npos) {
-                        //cout << "End found: " << (static_cast<size_t>(iResult-11) == pos) << '\t' << (iResult < 11) << std::endl;
-                        OutputFile.write(recvbuf, iResult-11);
-                        break;
-                    } else if (iResult < 11) {
-                        try { 
-                            if (endInSight.substr(0, iResult) == endFileString.substr(11-iResult)) break; // End found
-                        } catch (...) {}
-                        OutputFile.write(recvbuf, iResult);
-                    } else { // Forgot this statement; Lost millions of bytes during 1st transfer
-                        OutputFile.write(recvbuf, iResult);
-                    }
-                } else {
-                    if (recvbuf[DEFAULT_BUFLEN-1] == 'd') { // Could possibly be a perfect transfer of 2048 bytes with full end
-                        string endInSight {recvbuf+(DEFAULT_BUFLEN-11), 11};
-                        size_t pos = endInSight.find(endFileString);
-                        if (pos != std::string::npos) {
-                            OutputFile.write(recvbuf, iResult-11);
-                            break;
-                        }
-                    } else {
-                        OutputFile.write(recvbuf, iResult);
-                    }
-                }
-            } while (iResult > 0); // Whole file
+                recvBytes = static_cast<size_t>(iResult);
+                OutputFile.write(recvbuf, iResult);
+                if (recvBytes > remainingBytes) {
+                    std::cerr << "Receieved more bytes than expected." << std::endl;
+                    closesocket(ClientSocket);
+                    WSACleanup();
+                    return 1;
+                } 
+                remainingBytes -= static_cast<size_t>(iResult);
+            } while (remainingBytes > 0 && iResult > 0); // Whole file
 
             iSendResult = send(ClientSocket, sendbuf, 1, 0);
             if (iSendResult == SOCKET_ERROR)
