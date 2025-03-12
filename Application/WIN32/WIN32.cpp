@@ -210,6 +210,8 @@ int main(int argc, char **argv)
     WSACleanup();
     OutputFile.close();
 
+    std::cin;
+
     return 0;
 }
 
