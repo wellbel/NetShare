@@ -117,6 +117,7 @@ int main(int argc, char **argv)
     do {
 
         iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
+        
         if (iResult > 0)
         {
             string fileName{recvbuf, static_cast<size_t>(iResult)};
@@ -148,28 +149,30 @@ int main(int argc, char **argv)
             do {
                 iResult = recv(ClientSocket, recvbuf, DEFAULT_BUFLEN, 0);
                 if (iResult != DEFAULT_BUFLEN) {
-                    string endInSight {recvbuf, static_cast<size_t>(iResult)};
+                    string endInSight{recvbuf, static_cast<size_t>(iResult)};
                     size_t pos = endInSight.find(endFileString);
                     if (pos != std::string::npos) {
                         //cout << "End found: " << (static_cast<size_t>(iResult-11) == pos) << '\t' << (iResult < 11) << std::endl;
-                        OutputFile.write(recvbuf, static_cast<size_t>(iResult-11));
+                        OutputFile.write(recvbuf, iResult-11);
                         break;
                     } else if (iResult < 11) {
                         try { 
                             if (endInSight.substr(0, iResult) == endFileString.substr(11-iResult)) break; // End found
                         } catch (...) {}
-                        OutputFile.write(recvbuf, static_cast<size_t>(iResult));
+                        OutputFile.write(recvbuf, iResult);
+                    } else { // Forgot this statement; Lost millions of bytes during 1st transfer
+                        OutputFile.write(recvbuf, iResult);
                     }
                 } else {
                     if (recvbuf[DEFAULT_BUFLEN-1] == 'd') { // Could possibly be a perfect transfer of 2048 bytes with full end
                         string endInSight {recvbuf+(DEFAULT_BUFLEN-11), 11};
                         size_t pos = endInSight.find(endFileString);
                         if (pos != std::string::npos) {
-                            OutputFile.write(recvbuf, static_cast<size_t>(iResult-11));
+                            OutputFile.write(recvbuf, iResult-11);
                             break;
                         }
                     } else {
-                        OutputFile.write(recvbuf, static_cast<size_t>(iResult));
+                        OutputFile.write(recvbuf, iResult);
                     }
                 }
             } while (iResult > 0); // Whole file
@@ -190,7 +193,7 @@ int main(int argc, char **argv)
             printf("recv failed: %d\n", WSAGetLastError());
             closesocket(ClientSocket);
             WSACleanup();
-            return 1;
+            break;
         }
 
     } while (iResult > 0);
@@ -203,7 +206,6 @@ int main(int argc, char **argv)
         WSACleanup();
         return 1;
     }
-
     // cleanup
     closesocket(ClientSocket);
     WSACleanup();
